@@ -7,7 +7,7 @@
 
 @test "Configure" {
   # Run Hook
-  run run_hook "test-single" "configure" "$(payload configure)"
+  run run_hook "test-single" "configure" "$(payload configure-local)"
   echo "$output"
   [ "$status" -eq 0 ]
 

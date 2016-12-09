@@ -29,7 +29,7 @@ start_container() {
     --net=nanobox \
     --ip=$ip \
     --volume=${hookit_dir}/:/opt/nanobox/hooks \
-    nanobox/pulse
+    nanobox/bridge
 }
 
 stop_container() {

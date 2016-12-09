@@ -12,9 +12,9 @@ require 'hookit/setup'
 # export openvpn
 execute "send diff data to new member" do
   command <<-EOF
-    rsync \
+    /data/bin/rsync \
       --delete \
-      -a \
+      -va \
       /data/var/db/openvpn/. \
       #{payload[:member][:local_ip]}:/data/var/db/openvpn/
   EOF

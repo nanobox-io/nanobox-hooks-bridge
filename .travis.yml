@@ -10,4 +10,4 @@ before_install:
   - ifconfig
   - docker pull nanobox/bridge
 
-script: sudo test/run_all.sh
+script: sudo stdbuf -o0 test/run_all.sh

@@ -1,25 +1,20 @@
 # source docker helpers
 . util/docker.sh
 
-# source mist helpers
-. util/mist.sh
-
-@test "Start Mist Container" {
-  start_mist
-}
-
 @test "Start Old Container" {
   start_container "test-migrate-old" "192.168.0.2"
 }
 
-@test "Configure Old Pulse" {
+@test "Configure Old Bridge" {
   # Run Hook
   run run_hook "test-migrate-old" "configure" "$(payload configure)"
+  echo "$output"
   [ "$status" -eq 0 ]
 }
 
-@test "Start Pulse On Old" {
+@test "Start Bridge On Old" {
   run run_hook "test-migrate-old" "start" "$(payload start)"
+  echo "$output"
   [ "$status" -eq 0 ]
 }
 
@@ -32,13 +27,15 @@
   start_container "test-migrate-new" "192.168.0.4"
 }
 
-@test "Configure New Pulse" {
+@test "Configure New Bridge" {
   run run_hook "test-migrate-new" "configure" "$(payload configure-new)"
+  echo "$output"
   [ "$status" -eq 0 ]
 }
 
 @test "Prepare New Import" {
   run run_hook "test-migrate-new" "import-prep" "$(payload import-prep)"
+  echo "$output"
   [ "$status" -eq 0 ]
 }
 
@@ -48,8 +45,9 @@
   [ "$status" -eq 0 ]
 }
 
-@test "Stop Old Pulse Service" {
+@test "Stop Old Bridge Service" {
   run run_hook "test-migrate-old" "stop" "$(payload stop)"
+  echo "$output"
   [ "$status" -eq 0 ]
 }
 
@@ -61,18 +59,26 @@
 
 @test "Clean After Import" {
   run run_hook "test-migrate-new" "import-clean" "$(payload import-clean)"
+  echo "$output"
   [ "$status" -eq 0 ]
 }
 
-@test "Start New Pulse Service" {
+@test "Start New Bridge Service" {
   run run_hook "test-migrate-new" "start" "$(payload start)"
+  echo "$output"
   [ "$status" -eq 0 ]
 }
 
 @test "Verify Data Transfered" {
-  run docker exec "test-migrate-new" bash -c "[ -d /var/db/influxdb/data ]"
+  run docker exec "test-migrate-old" md5sum /data/var/db/openvpn/pki/ca.crt
   echo "$output"
+  old="$output"
   [ "$status" -eq 0 ]
+  run docker exec "test-migrate-new" md5sum /data/var/db/openvpn/pki/ca.crt
+  echo "$output"
+  new="$output"
+  [ "$status" -eq 0 ]
+  [ "$old" = "$new" ]
 }
 
 @test "Stop Old Container" {
@@ -81,8 +87,4 @@
 
 @test "Stop New Container" {
   stop_container "test-migrate-new"
-}
-
-@test "Stop Mist Container" {
-  stop_mist
 }

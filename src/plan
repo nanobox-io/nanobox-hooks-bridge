@@ -2,9 +2,9 @@
 
 cat <<-END
 {
-	"behaviors": [
-		"backupable",
-		"migratable"
-	]
+  "behaviors": [
+    "backupable",
+    "migratable"
+  ]
 }
 END

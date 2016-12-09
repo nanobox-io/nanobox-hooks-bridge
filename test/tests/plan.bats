@@ -15,8 +15,9 @@
     "migratable"
   ]
 }
-END)
-
+END
+)
+  echo "$output"
   [ "$output" = "$expected" ]
 }
 

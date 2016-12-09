@@ -7,6 +7,8 @@ require 'bundler/setup'
 # load hookit/setup to bootstrap hookit and import the dsl
 require 'hookit/setup'
 
+require 'ipaddr'
+
 include Hooky::Openvpn
 config = converge( CONFIG_DEFAULTS, payload[:config] )
 
@@ -16,69 +18,86 @@ directory '/data/var/db/openvpn' do
 end
 
 # ensure the etc config directory exists
-directory '/etc/openvpn' do
+directory '/data/etc/openvpn' do
   recursive true
 end
 
-ip_addr = `ip addr show dev eth0`
-ip = /\s+inet ([0-9.].+)\/([0-9]+) scope/.match(ip_addr).captures[0]
-cidr = /\s+inet ([0-9.].+)\/([0-9]+) scope/.match(ip_addr).captures[1]
-netmask = IPAddr.new('255.255.255.255').mask(cidr.to_i).to_s
-
-ip_route = `ip route`
-default_gateway = /default via ([0-9.]+) dev/.match(ip_route).captures[0]
-
-end_ip = IPAddr.new("#{ip}/#{cidr}").to_range.to_a[-2]
-begin_ip = IPAddr.new("#{ip}/#{cidr}").to_range.to_a[-(1 + config[:ips])]
-
-# generate the config file
-template '/data/etc/openvpn/config.json' do
-  source 'openvpn.conf.erb'
-  mode 0644
-  variables ({ config: config, ip: ip, netmask: netmask, begin_ip: begin_ip, end_ip: end_ip })
-  owner 'gonano'
-  group 'gonano'
+if payload[:platform] == "local"
+  execute 'cp -r /data/share/nanobox/* /data/var/db/openvpn' do
+    cwd '/data/var/db/openvpn'
+    not_if { ::File.exists? '/data/var/db/openvpn/pki' }
+  end
 end
 
-template '/etc/nanoinit.d/bridge.sh' do
-  source 'bridge.sh.erb'
-  mode 755
-  variables ({ip: ip, cidr: cidr, default_gateway: default_gateway})
-  owner 'root'
-  group 'root'
+if ! ::File.exists? '/etc/nanoinit.d/bridge.sh' and ! ::File.exists? '/data/etc/openvpn/openvpn.conf'
+  ip_addr = `ip addr show dev eth0`
+  ip = /\s+inet ([0-9.].+)\/([0-9]+) scope/.match(ip_addr).captures[0]
+  cidr = /\s+inet ([0-9.].+)\/([0-9]+) scope/.match(ip_addr).captures[1]
+  netmask = IPAddr.new('255.255.255.255').mask(cidr.to_i).to_s
+
+  ip_route = `ip route`
+  default_gateway = /default via ([0-9.]+) dev/.match(ip_route).captures[0]
+
+  end_ip = IPAddr.new("#{ip}/#{cidr}").to_range.to_a[-2]
+  begin_ip = IPAddr.new("#{ip}/#{cidr}").to_range.to_a[-(1 + config[:ips])]
+
+  # generate the config file
+  template '/data/etc/openvpn/openvpn.conf' do
+    source 'openvpn.conf.erb'
+    mode 0644
+    variables ({ config: config, ip: ip, netmask: netmask, begin_ip: begin_ip, end_ip: end_ip })
+    owner 'gonano'
+    group 'gonano'
+    not_if { ::File.exists? '/data/etc/openvpn/openvpn.conf' }
+  end
+
+  template '/etc/nanoinit.d/bridge.sh' do
+    source 'bridge.sh.erb'
+    mode 755
+    variables ({ip: ip, cidr: cidr, default_gateway: default_gateway})
+    owner 'root'
+    group 'root'
+    not_if { ::File.exists? '/etc/nanoinit.d/bridge.sh' }
+  end
+
+  execute '/etc/nanoinit.d/bridge.sh start' do
+    cwd '/etc/nanoinit.d'
+  end
 end
 
 template '/data/var/db/openvpn/openssl-1.0.cnf' do
   source 'openssl-1.0.cnf.erb'
   owner 'root'
   group 'root'
+  not_if { ::File.exists? '/data/var/db/openvpn/openssl-1.0.cnf' }
 end
 
 link '/data/var/db/openvpn/x509-types' do
   to '/data/share/examples/easyrsa/x509-types'
+  not_if { ::File.exists? '/data/var/db/openvpn/x509-types' }
 end
 
-execute 'easyrsa init-pki' do
+execute '/data/bin/easyrsa init-pki' do
   cwd '/data/var/db/openvpn'
   not_if { ::File.exists? '/data/var/db/openvpn/pki' }
 end
 
-execute 'easyrsa build-ca nopass' do
+execute "/data/bin/easyrsa --req-cn=\"Nanobox\" --batch build-ca nopass" do
   cwd '/data/var/db/openvpn'
   not_if { ::File.exists? '/data/var/db/openvpn/pki/ca.crt' }
 end
 
-execute 'easyrsa gen-dh' do
+execute '/data/bin/easyrsa gen-dh' do
   cwd '/data/var/db/openvpn'
   not_if { ::File.exists? '/data/var/db/openvpn/pki/dh.pem' }
 end
 
-execute 'easyrsa build-server-full server nopass' do
+execute '/data/bin/easyrsa build-server-full server nopass' do
   cwd '/data/var/db/openvpn'
   not_if { ::File.exists? '/data/var/db/openvpn/pki/issued/server.crt' }
 end
 
-execute 'easyrsa build-client-full client1 nopass' do
+execute '/data/bin/easyrsa build-client-full client1 nopass' do
   cwd '/data/var/db/openvpn'
   not_if { ::File.exists? '/data/var/db/openvpn/pki/issued/client1.crt' }
 end
