@@ -1,0 +1,29 @@
+#!/bin/bash
+
+case $1 in
+  start)
+    ip link add name br0 type bridge
+    ip tuntap add dev tap0 mode tap
+    ip link set dev br0 group 1
+    ip link set dev tap0 master br0 group 1
+    ip link set dev eth0 master br0 group 1
+    ip link set group 1 up
+    ip addr add <%= ip %>/<%= cidr %> dev br0
+    ip addr del <%= ip %>/<%= cidr %> dev eth0
+    ip route add default via <%= default_gateway %>
+    ;;
+  stop)
+    ip addr add <%= ip %>/<%= cidr %> dev eth0
+    ip addr del <%= ip %>/<%= cidr %> dev br0
+    ip route add default via <%= default_gateway %>
+    ip link set dev eth0 nomaster group 0
+    ip link set group 1 down
+    ip tuntap del tap0 mode tap
+    ip link delete dev br0
+    ;;
+  *)
+    echo "$0 start|stop"
+    exit 1
+    ;;
+esac
+

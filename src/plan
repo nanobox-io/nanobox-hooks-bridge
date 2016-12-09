@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cat <<-END
+{
+	"behaviors": [
+		"backupable",
+		"migratable"
+	]
+}
+END
