@@ -31,8 +31,8 @@ end
 
 if ! ::File.exists? '/etc/nanoinit.d/bridge.sh' and ! ::File.exists? '/data/etc/openvpn/openvpn.conf'
   ip_addr = `ip addr show dev eth0`
-  ip = /\s+inet ([0-9.].+)\/([0-9]+) scope/.match(ip_addr).captures[0]
-  cidr = /\s+inet ([0-9.].+)\/([0-9]+) scope/.match(ip_addr).captures[1]
+  ip = /\s+inet ([0-9.].+)\/([0-9]+) (brd [0-9.].+ )?scope/.match(ip_addr).captures[0]
+  cidr = /\s+inet ([0-9.].+)\/([0-9]+) (brd [0-9.].+ )?scope/.match(ip_addr).captures[1]
   netmask = IPAddr.new('255.255.255.255').mask(cidr.to_i).to_s
 
   ip_route = `ip route`
